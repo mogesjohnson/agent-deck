@@ -17,8 +17,7 @@ Run these from the repo root. They are the only definition of "checks pass".
 
 <!-- REPO-SPECIFIC: replace with the real commands. Delete any that do not exist. -->
 - Install: `npm ci`
-- Build and type-check: `npm run build` (runs `tsc`)
-- Smoke check: `node dist/cli.js --once --json`
+- Build and type-check: `npm run build` (`tsc`). Smoke check: `node dist/cli.js --once`
 <!-- /REPO-SPECIFIC -->
 
 ## Where things live
