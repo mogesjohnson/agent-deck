@@ -5,6 +5,8 @@
   "main": "dist/cli.js",
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc && node test/run.js",
     "start": "node dist/cli.js",
     "once": "node dist/cli.js --once"
   },

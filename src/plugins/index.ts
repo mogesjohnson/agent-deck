@@ -17,10 +17,14 @@ export function makeContext(activeWindowMs = 10 * 60 * 1000): PluginContext {
  */
 export async function collectSessions(ctx = makeContext()): Promise<Session[]> {
   const results = await Promise.all(plugins.map((p) => p.listSessions(ctx).catch(() => [] as Session[])));
-  const files = results.slice(0, 2).flat();
+  return dedupe(results.slice(0, 2).flat(), results[2]);
+}
+
+/** Drops process entries that match a file-based session of the same agent and cwd. */
+export function dedupe(files: Session[], procs: Session[]): Session[] {
   const seen = new Set(files.map((s) => `${s.agent.replace('-code', '')}|${s.cwd}`));
-  const procs = results[2].filter((s) => !seen.has(`${s.agent}|${s.cwd}`));
-  return [...files, ...procs]
+  const kept = procs.filter((s) => !seen.has(`${s.agent}|${s.cwd}`));
+  return [...files, ...kept]
     .map((s) => ({ ...s, email: s.email ?? 'unknown' }))
     .sort((a, b) => (a.email + a.agent + a.id).localeCompare(b.email + b.agent + b.id));
 }
