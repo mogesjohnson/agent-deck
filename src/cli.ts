@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { collectSessions } from './plugins';
 import { Deck } from './tui';
+import { parseArgs } from './args';
 
 const HELP = `agent-deck: tiled view of every active AI coding agent session
 
@@ -11,9 +12,10 @@ Usage: agent-deck [--once] [--json] [--interval <ms>]
 Keys: tab/arrows select, enter/space toggle details, a toggle all, r refresh, q quit`;
 
 async function main(argv: string[]) {
-  if (argv.includes('-h') || argv.includes('--help')) return console.log(HELP);
-  if (argv.includes('--json')) return console.log(JSON.stringify(await collectSessions(), null, 2));
-  if (argv.includes('--once') || !process.stdout.isTTY) {
+  const args = parseArgs(argv);
+  if (args.help) return console.log(HELP);
+  if (args.json) return console.log(JSON.stringify(await collectSessions(), null, 2));
+  if (args.once || !process.stdout.isTTY) {
     const sessions = await collectSessions();
     if (!sessions.length) return console.log('no active sessions');
     for (const s of sessions) {
@@ -23,9 +25,7 @@ async function main(argv: string[]) {
     }
     return;
   }
-  const i = argv.indexOf('--interval');
-  const ms = i >= 0 ? Number(argv[i + 1]) || 2000 : 2000;
-  await new Deck(ms).start();
+  await new Deck(args.interval).start();
 }
 
 main(process.argv.slice(2)).catch((e) => {

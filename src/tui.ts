@@ -5,13 +5,13 @@ import { Session } from './types';
 const ESC = '\x1b[';
 const out = (s: string) => process.stdout.write(s);
 
-function fit(s: string, w: number): string {
+export function fit(s: string, w: number): string {
   const chars = [...s];
   if (chars.length > w) return chars.slice(0, Math.max(0, w - 1)).join('') + (w > 0 ? '…' : '');
   return s + ' '.repeat(w - chars.length);
 }
 
-function wrap(s: string, w: number, max: number): string[] {
+export function wrap(s: string, w: number, max: number): string[] {
   const chars = [...s];
   const lines: string[] = [];
   for (let i = 0; i < chars.length && lines.length < max; i += w) lines.push(chars.slice(i, i + w).join(''));

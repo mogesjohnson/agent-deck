@@ -7,7 +7,7 @@ import { repoName } from '../util';
 
 const AGENTS = ['claude', 'codex', 'grok', 'gemini', 'antigravity'];
 
-interface Proc {
+export interface Proc {
   pid: number;
   cmd: string;
   cwd?: string;
@@ -31,12 +31,49 @@ export function detectAgent(cmd: string): string | undefined {
   return undefined;
 }
 
+/** /proc/<pid>/cmdline is NUL-separated argv. */
+export function parseProcCmdline(raw: string): string {
+  return raw.split('\0').join(' ').trim();
+}
+
+/** Parses `ps -axo pid=,command=` output. */
+export function parsePs(txt: string): Proc[] {
+  const procs: Proc[] = [];
+  for (const line of txt.split(/\r?\n/)) {
+    const m = /^\s*(\d+)\s+(.*)$/.exec(line);
+    if (m) procs.push({ pid: Number(m[1]), cmd: m[2] });
+  }
+  return procs;
+}
+
+/** Parses `lsof -Fn` output for the cwd entry. */
+export function parseLsofCwd(txt: string): string | undefined {
+  const line = txt.split(/\r?\n/).find((l) => l.startsWith('n'));
+  return line ? line.slice(1) : undefined;
+}
+
+/** Parses Win32_Process rows from ConvertTo-Json (one object or an array). */
+export function parseWin32(txt: string): Proc[] {
+  try {
+    const data = JSON.parse(txt);
+    const list = Array.isArray(data) ? data : [data];
+    return list.map((p: any) => ({ pid: p.ProcessId, cmd: p.CommandLine || p.Name || '' }));
+  } catch {
+    return [];
+  }
+}
+
+/** Reads `--model x` or `--model=x` from a command line. */
+export function parseModel(cmd: string): string | undefined {
+  return /--model[= ](\S+)/.exec(cmd)?.[1];
+}
+
 async function linuxProcs(): Promise<Proc[]> {
   const out: Proc[] = [];
   for (const d of fs.readdirSync('/proc')) {
     if (!/^\d+$/.test(d)) continue;
     try {
-      const cmd = fs.readFileSync(`/proc/${d}/cmdline`, 'utf8').split('\0').join(' ').trim();
+      const cmd = parseProcCmdline(fs.readFileSync(`/proc/${d}/cmdline`, 'utf8'));
       if (!cmd) continue;
       let cwd: string | undefined;
       try {
@@ -53,31 +90,18 @@ async function linuxProcs(): Promise<Proc[]> {
 }
 
 async function macProcs(): Promise<Proc[]> {
-  const txt = await run('ps', ['-axo', 'pid=,command=']);
-  const procs: Proc[] = [];
-  for (const line of txt.split('\n')) {
-    const m = /^\s*(\d+)\s+(.*)$/.exec(line);
-    if (m) procs.push({ pid: Number(m[1]), cmd: m[2] });
-  }
-  return procs;
+  return parsePs(await run('ps', ['-axo', 'pid=,command=']));
 }
 
 async function macCwd(pid: number): Promise<string | undefined> {
   const txt = await run('lsof', ['-a', '-d', 'cwd', '-p', String(pid), '-Fn']);
-  const line = txt.split('\n').find((l) => l.startsWith('n'));
-  return line ? line.slice(1) : undefined;
+  return parseLsofCwd(txt);
 }
 
 async function winProcs(): Promise<Proc[]> {
   const ps = 'Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Compress';
   const txt = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps]);
-  try {
-    const data = JSON.parse(txt);
-    const list = Array.isArray(data) ? data : [data];
-    return list.map((p: any) => ({ pid: p.ProcessId, cmd: p.CommandLine || p.Name || '' }));
-  } catch {
-    return [];
-  }
+  return parseWin32(txt);
 }
 
 export const processPlugin: AgentPlugin = {
@@ -91,12 +115,11 @@ export const processPlugin: AgentPlugin = {
       const agent = detectAgent(p.cmd);
       if (!agent) continue;
       if (ctx.platform === 'darwin') p.cwd = await macCwd(p.pid);
-      const m = /--model[= ](\S+)/.exec(p.cmd);
       const acct = matchAccount(ctx.accounts, { cwd: p.cwd });
       out.push({
         id: `proc:${p.pid}`,
         agent,
-        model: m?.[1],
+        model: parseModel(p.cmd),
         email: acct?.email,
         accountId: acct?.label,
         cwd: p.cwd,
