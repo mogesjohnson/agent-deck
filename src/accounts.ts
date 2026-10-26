@@ -19,8 +19,9 @@ export function loadAccounts(file = accountsPath()): Account[] {
 }
 
 export function normPath(p: string): string {
-  let n = path.resolve(p).replace(/\\/g, '/').replace(/\/+$/, '');
-  if (process.platform === 'win32' || /^[a-zA-Z]:\//.test(n)) n = n.toLowerCase();
+  const win = process.platform === 'win32' || /^[a-zA-Z]:|^\\\\/.test(p);
+  let n = (win ? path.win32.resolve(p) : path.resolve(p)).replace(/\\/g, '/').replace(/\/+$/, '');
+  if (win) n = n.toLowerCase();
   return n;
 }
 

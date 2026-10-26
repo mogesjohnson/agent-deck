@@ -1,5 +1,5 @@
 import * as os from 'os';
-import { loadAccounts } from '../accounts';
+import { loadAccounts, normPath } from '../accounts';
 import { AgentPlugin, PluginContext, Session } from '../types';
 import { claudeCodePlugin } from './claude-code';
 import { codexPlugin } from './codex';
@@ -22,8 +22,9 @@ export async function collectSessions(ctx = makeContext()): Promise<Session[]> {
 
 /** Drops process entries that match a file-based session of the same agent and cwd. */
 export function dedupe(files: Session[], procs: Session[]): Session[] {
-  const seen = new Set(files.map((s) => `${s.agent.replace('-code', '')}|${s.cwd}`));
-  const kept = procs.filter((s) => !seen.has(`${s.agent}|${s.cwd}`));
+  const key = (agent: string, cwd?: string) => (cwd ? `${agent.replace('-code', '')}|${normPath(cwd)}` : undefined);
+  const seen = new Set(files.map((s) => key(s.agent, s.cwd)).filter(Boolean));
+  const kept = procs.filter((s) => !seen.has(key(s.agent, s.cwd)));
   return [...files, ...kept]
     .map((s) => ({ ...s, email: s.email ?? 'unknown' }))
     .sort((a, b) => (a.email + a.agent + a.id).localeCompare(b.email + b.agent + b.id));

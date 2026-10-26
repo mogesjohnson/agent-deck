@@ -19,11 +19,20 @@ function run(file: string, args: string[]): Promise<string> {
   });
 }
 
+/** Splits a command line on whitespace, keeping "quoted parts" (Windows paths with spaces) whole. */
+export function splitArgs(cmd: string): string[] {
+  const out: string[] = [];
+  const re = /"([^"]*)"?|(\S+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(cmd))) out.push(m[1] ?? m[2]);
+  return out;
+}
+
 /** Returns the agent name if the command line is one of the known CLIs. */
 export function detectAgent(cmd: string): string | undefined {
-  const parts = cmd.split(/\s+/).slice(0, 3);
+  const parts = splitArgs(cmd).slice(0, 3);
   for (const part of parts) {
-    const base = path.basename(part.replace(/\\/g, '/')).toLowerCase().replace(/\.(exe|cmd|js|mjs)$/, '');
+    const base = path.posix.basename(part.replace(/\\/g, '/')).toLowerCase().replace(/\.(exe|cmd|js|mjs)$/, '');
     for (const a of AGENTS) if (base === a || base === `${a}-cli` || base === `@${a}`) return a;
   }
   const m = /[\\/](?:@anthropic-ai[\\/]claude-code|@openai[\\/]codex|@google[\\/]gemini-cli)[\\/]/i.exec(cmd);
