@@ -1,0 +1,30 @@
+{
+  "name": "agent-deck",
+  "version": "0.1.0",
+  "description": "Terminal UI that tiles every active AI coding agent session across accounts",
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "once": "node dist/cli.js --once"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mogesjohnson/agent-deck.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mogesjohnson/agent-deck/issues"
+  },
+  "homepage": "https://github.com/mogesjohnson/agent-deck#readme",
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^5.9.3"
+  },
+  "bin": {
+    "agent-deck": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
