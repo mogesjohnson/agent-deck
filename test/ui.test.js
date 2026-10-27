@@ -63,5 +63,7 @@ test('parseArgs reads flags and interval', () => {
   assert.deepEqual(parseArgs(['--json', '--once', '-h']), { help: true, json: true, once: true, interval: 2000 });
   assert.equal(parseArgs(['--interval', '500']).interval, 500);
   assert.equal(parseArgs(['--interval', 'abc']).interval, 2000);
+  assert.equal(parseArgs(['--interval', '-5']).interval, 2000);
+  assert.equal(parseArgs(['--interval', 'Infinity']).interval, 2000);
   assert.equal(parseArgs(['--interval']).interval, 2000);
 });
