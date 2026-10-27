@@ -8,8 +8,11 @@ export function readTail(file: string, bytes = 64 * 1024): string[] {
     fd = fs.openSync(file, 'r');
     const size = fs.fstatSync(fd).size;
     const start = Math.max(0, size - bytes);
-    const buf = Buffer.alloc(size - start);
-    fs.readSync(fd, buf, 0, buf.length, start);
+    // Read one byte before `start` so a line that begins exactly at `start` is kept:
+    // when that byte is a newline, the first element dropped below is just ''.
+    const from = start > 0 ? start - 1 : 0;
+    const buf = Buffer.alloc(size - from);
+    fs.readSync(fd, buf, 0, buf.length, from);
     const lines = buf.toString('utf8').split('\n');
     if (start > 0) lines.shift();
     return lines.filter((l) => l.trim());
@@ -27,7 +30,8 @@ export function readHead(file: string, bytes = 16 * 1024): string[] {
     const buf = Buffer.alloc(bytes);
     const n = fs.readSync(fd, buf, 0, bytes, 0);
     const lines = buf.subarray(0, n).toString('utf8').split('\n');
-    if (n === bytes) lines.pop();
+    // Only a file longer than the buffer can have a cut-off last line.
+    if (n === bytes && fs.fstatSync(fd).size > bytes) lines.pop();
     return lines.filter((l) => l.trim());
   } catch {
     return [];
